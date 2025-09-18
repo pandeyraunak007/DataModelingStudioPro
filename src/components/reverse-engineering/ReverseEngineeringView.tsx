@@ -29,9 +29,7 @@ import {
   Key,
   AlertTriangle,
   Loader2,
-  Upload,
   File,
-  FileText,
   X
 } from 'lucide-react'
 
