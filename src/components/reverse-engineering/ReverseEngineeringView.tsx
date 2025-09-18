@@ -28,7 +28,11 @@ import {
   User,
   Key,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Upload,
+  File,
+  FileText,
+  X
 } from 'lucide-react'
 
 interface ReverseEngineeringViewProps {
@@ -72,6 +76,13 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
     location: 'mart' as LocationType,
     type: 'both' as ModelType
   })
+  const [scriptFile, setScriptFile] = useState<File | null>(null)
+  const [scriptOptions, setScriptOptions] = useState({
+    dialect: 'standard',
+    encoding: 'utf-8',
+    caseSensitive: false,
+    parseComments: true
+  })
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [logs, setLogs] = useState<string[]>([])
@@ -79,6 +90,7 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
 
   const dataSources = [
     { id: 'fabric', name: 'Microsoft Fabric', supported: true, icon: '🔷' },
+    { id: 'script', name: 'SQL Script File', supported: true, icon: '📄' },
     { id: 'snowflake', name: 'Snowflake', supported: false, icon: '❄️' },
     { id: 'redshift', name: 'Amazon Redshift', supported: false, icon: '🔴' },
     { id: 'bigquery', name: 'Google BigQuery', supported: false, icon: '🔵' },
@@ -113,7 +125,20 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
     setLogs([])
 
     // Simulate reverse engineering process
-    const steps = [
+    const steps = selectedDataSource === 'script' ? [
+      'Reading SQL script file...',
+      'Parsing SQL statements...',
+      'Analyzing CREATE TABLE statements...',
+      'Extracting table definitions...',
+      'Processing CREATE VIEW statements...',
+      'Analyzing constraints and indexes...',
+      'Detecting relationships...',
+      'Processing comments and documentation...',
+      'Generating model structure...',
+      'Creating logical model...',
+      'Creating physical model...',
+      'Finalizing model...'
+    ] : [
       'Connecting to Microsoft Fabric...',
       'Authenticating with provided credentials...',
       'Scanning database schema...',
@@ -139,11 +164,34 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
     setIsRunning(false)
   }
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setScriptFile(file)
+      // Auto-populate model name from filename if not already set
+      if (!targetModel.name) {
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '')
+        setTargetModel(prev => ({ ...prev, name: nameWithoutExtension }))
+      }
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setScriptFile(null)
+  }
+
   const handleReset = () => {
     setSelectedDataSource('')
     setConnectionDetails({ host: '', port: '', database: '', schema: '' })
     setCredentials({ username: '', password: '', clientId: '', clientSecret: '', tenantId: '' })
     setTargetModel({ name: '', location: 'mart', type: 'both' })
+    setScriptFile(null)
+    setScriptOptions({
+      dialect: 'standard',
+      encoding: 'utf-8',
+      caseSensitive: false,
+      parseComments: true
+    })
     setExtractionOptions({
       tables: true,
       views: true,
@@ -160,8 +208,11 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
     setLogs([])
   }
 
-  const canProceed = selectedDataSource && connectionDetails.host && connectionDetails.database &&
-                   targetModel.name && (authType === 'userPassword' ? credentials.username && credentials.password : true)
+  const canProceed = selectedDataSource && targetModel.name &&
+                   (selectedDataSource === 'script'
+                     ? scriptFile !== null
+                     : connectionDetails.host && connectionDetails.database &&
+                       (authType === 'userPassword' ? credentials.username && credentials.password : true))
 
   if (step === 'running') {
     return (
@@ -349,8 +400,8 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
               </CardContent>
             </Card>
 
-            {/* Connection Details */}
-            {selectedDataSource && (
+            {/* Connection Details or File Upload */}
+            {selectedDataSource && selectedDataSource !== 'script' && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -528,6 +579,134 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
                       )}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Script File Upload */}
+            {selectedDataSource === 'script' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5" />
+                    <span>SQL Script File</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* File Upload Area */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+                    {scriptFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <File className="h-8 w-8 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-gray-900">{scriptFile.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {(scriptFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleRemoveFile}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-lg font-medium text-gray-900 mb-2">
+                          Upload SQL Script File
+                        </p>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Supported formats: .sql, .txt, .ddl
+                        </p>
+                        <label className="cursor-pointer">
+                          <Button>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </Button>
+                          <input
+                            type="file"
+                            accept=".sql,.txt,.ddl"
+                            onChange={handleFileUpload}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Script Parsing Options */}
+                  {scriptFile && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-900">Parsing Options</h4>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            SQL Dialect
+                          </label>
+                          <select
+                            value={scriptOptions.dialect}
+                            onChange={(e) => setScriptOptions(prev => ({ ...prev, dialect: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="standard">Standard SQL</option>
+                            <option value="mysql">MySQL</option>
+                            <option value="postgresql">PostgreSQL</option>
+                            <option value="oracle">Oracle</option>
+                            <option value="sqlserver">SQL Server</option>
+                            <option value="sqlite">SQLite</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            File Encoding
+                          </label>
+                          <select
+                            value={scriptOptions.encoding}
+                            onChange={(e) => setScriptOptions(prev => ({ ...prev, encoding: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="utf-8">UTF-8</option>
+                            <option value="utf-16">UTF-16</option>
+                            <option value="ascii">ASCII</option>
+                            <option value="latin1">Latin-1</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          {scriptOptions.caseSensitive ?
+                            <CheckSquare className="h-4 w-4 text-blue-600" /> :
+                            <Square className="h-4 w-4 text-gray-400" />
+                          }
+                          <span>Case Sensitive Parsing</span>
+                          <input
+                            type="checkbox"
+                            checked={scriptOptions.caseSensitive}
+                            onChange={(e) => setScriptOptions(prev => ({ ...prev, caseSensitive: e.target.checked }))}
+                            className="sr-only"
+                          />
+                        </label>
+
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          {scriptOptions.parseComments ?
+                            <CheckSquare className="h-4 w-4 text-blue-600" /> :
+                            <Square className="h-4 w-4 text-gray-400" />
+                          }
+                          <span>Parse Comments and Documentation</span>
+                          <input
+                            type="checkbox"
+                            checked={scriptOptions.parseComments}
+                            onChange={(e) => setScriptOptions(prev => ({ ...prev, parseComments: e.target.checked }))}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -829,6 +1008,29 @@ export default function ReverseEngineeringView({ onBack }: ReverseEngineeringVie
                     <li>Use your Fabric workspace URL as the host</li>
                     <li>Database refers to your lakehouse or warehouse name</li>
                     <li>Schema is typically 'dbo' for most cases</li>
+                  </ul>
+                </div>
+              )}
+
+              {selectedDataSource === 'script' && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">SQL Script File</h4>
+                  <p>Upload a SQL script file (.sql, .txt, .ddl) to reverse engineer its structure into a data model.</p>
+
+                  <h5 className="font-medium text-gray-900 mt-3 mb-1">Supported Scripts:</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>CREATE TABLE statements</li>
+                    <li>CREATE VIEW definitions</li>
+                    <li>ALTER TABLE constraints</li>
+                    <li>CREATE INDEX statements</li>
+                    <li>Foreign key relationships</li>
+                  </ul>
+
+                  <h5 className="font-medium text-gray-900 mt-3 mb-1">Tips:</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Choose the correct SQL dialect for best parsing</li>
+                    <li>Include comments for documentation</li>
+                    <li>File size limit: 50MB</li>
                   </ul>
                 </div>
               )}
