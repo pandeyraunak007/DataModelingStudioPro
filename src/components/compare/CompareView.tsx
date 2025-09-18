@@ -3,7 +3,28 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, GitCompare, CheckCircle, AlertTriangle, XCircle, Plus } from 'lucide-react'
+import {
+  ArrowLeft,
+  GitCompare,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  Download,
+  FileText,
+  Settings,
+  Search,
+  Filter,
+  Eye,
+  Database,
+  Home,
+  Users,
+  RefreshCw,
+  MoreHorizontal
+} from 'lucide-react'
 
 interface CompareViewProps {
   onBack: () => void
@@ -15,301 +36,694 @@ const sampleModels = [
     name: 'CustomerDB v1.2',
     version: '1.2',
     entities: ['Customer', 'Order', 'OrderItem'],
-    description: 'Basic customer and order management system'
+    description: 'Basic customer and order management system',
+    lastModified: '2024-01-15',
+    author: 'John Doe'
   },
   {
     id: 'customer_v13',
     name: 'CustomerDB v1.3',
     version: '1.3',
     entities: ['Customer', 'Order', 'OrderItem', 'Product'],
-    description: 'Enhanced with product catalog functionality'
+    description: 'Enhanced with product catalog functionality',
+    lastModified: '2024-01-20',
+    author: 'Jane Smith'
+  },
+  {
+    id: 'inventory_v1',
+    name: 'Inventory System v1.0',
+    version: '1.0',
+    entities: ['Product', 'Category', 'Supplier', 'Stock'],
+    description: 'Complete inventory management system',
+    lastModified: '2024-01-18',
+    author: 'Mike Johnson'
   }
 ]
 
-const sampleResults = [
-  { type: 'Entity', name: 'Customer', status: 'same', icon: CheckCircle, color: 'text-green-600' },
-  { type: 'Entity', name: 'Order', status: 'different', icon: AlertTriangle, color: 'text-yellow-600' },
-  { type: 'Entity', name: 'OrderItem', status: 'different', icon: AlertTriangle, color: 'text-yellow-600' },
-  { type: 'Entity', name: 'Product', status: 'new', icon: Plus, color: 'text-blue-600' },
-  { type: 'Relationship', name: 'Customer_Order', status: 'same', icon: CheckCircle, color: 'text-green-600' },
-  { type: 'Index', name: 'IDX_Order_Date', status: 'different', icon: AlertTriangle, color: 'text-yellow-600' },
+const comparisonResults = [
+  {
+    type: 'Entity',
+    name: 'Customer',
+    leftModel: {
+      exists: true,
+      properties: {
+        'CustomerID': 'INT PRIMARY KEY',
+        'FirstName': 'VARCHAR(50)',
+        'LastName': 'VARCHAR(50)',
+        'Email': 'VARCHAR(100)'
+      }
+    },
+    rightModel: {
+      exists: true,
+      properties: {
+        'CustomerID': 'INT PRIMARY KEY',
+        'FirstName': 'VARCHAR(50)',
+        'LastName': 'VARCHAR(50)',
+        'Email': 'VARCHAR(100)',
+        'PhoneNumber': 'VARCHAR(20)'
+      }
+    },
+    status: 'different',
+    conflicts: ['PhoneNumber field added in right model']
+  },
+  {
+    type: 'Entity',
+    name: 'Order',
+    leftModel: {
+      exists: true,
+      properties: {
+        'OrderID': 'INT PRIMARY KEY',
+        'CustomerID': 'INT FOREIGN KEY',
+        'OrderDate': 'DATETIME',
+        'TotalAmount': 'DECIMAL(10,2)'
+      }
+    },
+    rightModel: {
+      exists: true,
+      properties: {
+        'OrderID': 'INT PRIMARY KEY',
+        'CustomerID': 'INT FOREIGN KEY',
+        'OrderDate': 'DATETIME',
+        'TotalAmount': 'DECIMAL(12,2)',
+        'Status': 'VARCHAR(20)'
+      }
+    },
+    status: 'different',
+    conflicts: ['TotalAmount precision changed', 'Status field added']
+  },
+  {
+    type: 'Entity',
+    name: 'Product',
+    leftModel: {
+      exists: false,
+      properties: {}
+    },
+    rightModel: {
+      exists: true,
+      properties: {
+        'ProductID': 'INT PRIMARY KEY',
+        'ProductName': 'VARCHAR(100)',
+        'Price': 'DECIMAL(10,2)'
+      }
+    },
+    status: 'new',
+    conflicts: ['Entity only exists in right model']
+  }
 ]
 
 export default function CompareView({ onBack }: CompareViewProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [leftModel, setLeftModel] = useState('')
   const [rightModel, setRightModel] = useState('')
+  const [enableMergeModel, setEnableMergeModel] = useState(false)
+  const [comparisonType, setComparisonType] = useState('structure')
   const [isComparing, setIsComparing] = useState(false)
-  const [selectedResult, setSelectedResult] = useState<number | null>(null)
+  const [hasCompared, setHasCompared] = useState(false)
+  const [selectedConflict, setSelectedConflict] = useState<number | null>(null)
+  const [filterType, setFilterType] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showExportDrawer, setShowExportDrawer] = useState(false)
+  const [mergeModelData, setMergeModelData] = useState<any>({})
+
+  // Navigation items
+  const navItems = [
+    { id: 'dashboard', icon: Home, label: 'Dashboard' },
+    { id: 'models', icon: Database, label: 'Models' },
+    { id: 'reverse-engineering', icon: RefreshCw, label: 'Reverse Engineering' },
+    { id: 'compare', icon: GitCompare, label: 'Complete Compare', active: true },
+    { id: 'users', icon: Users, label: 'Users' },
+    { id: 'settings', icon: Settings, label: 'Settings' }
+  ]
 
   const handleStartComparison = () => {
     if (leftModel && rightModel) {
       setIsComparing(true)
       setTimeout(() => {
         setIsComparing(false)
-        setStep(3)
+        setHasCompared(true)
       }, 2000)
     }
   }
 
-  const renderStep1 = () => (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Select Models to Compare</h2>
-        <p className="text-gray-600">Choose the source and target models for comparison</p>
-      </div>
+  const handleConflictResolution = (index: number, action: 'take-left' | 'take-right' | 'add-to-merge' | 'skip') => {
+    console.log(`Resolving conflict ${index} with action: ${action}`)
+    // Update merge model data based on action
+    if (action === 'add-to-merge') {
+      setMergeModelData(prev => ({
+        ...prev,
+        [comparisonResults[index].name]: comparisonResults[index]
+      }))
+    }
+  }
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Model */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-blue-600">Source Model</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <select
-              value={leftModel}
-              onChange={(e) => setLeftModel(e.target.value)}
-              className="w-full p-2 border rounded-md mb-4"
-            >
-              <option value="">Select source model...</option>
-              {sampleModels.map(model => (
-                <option key={model.id} value={model.id}>{model.name}</option>
-              ))}
-            </select>
-            {leftModel && (
-              <div className="text-sm text-gray-600">
-                <div>Entities: {sampleModels.find(m => m.id === leftModel)?.entities.join(', ')}</div>
-                <div className="mt-2">{sampleModels.find(m => m.id === leftModel)?.description}</div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+  const filteredResults = comparisonResults.filter(result => {
+    const matchesFilter = filterType === 'all' || result.status === filterType
+    const matchesSearch = result.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesFilter && matchesSearch
+  })
 
-        {/* Right Model */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-red-600">Target Model</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <select
-              value={rightModel}
-              onChange={(e) => setRightModel(e.target.value)}
-              className="w-full p-2 border rounded-md mb-4"
-            >
-              <option value="">Select target model...</option>
-              {sampleModels.map(model => (
-                <option key={model.id} value={model.id}>{model.name}</option>
-              ))}
-            </select>
-            {rightModel && (
-              <div className="text-sm text-gray-600">
-                <div>Entities: {sampleModels.find(m => m.id === rightModel)?.entities.join(', ')}</div>
-                <div className="mt-2">{sampleModels.find(m => m.id === rightModel)?.description}</div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+  const renderConfigurationForm = () => (
+    <div className="space-y-6">
+      {/* Model Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Model Selection</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left Model */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-blue-600">Left Model (Source)</label>
+              <select
+                value={leftModel}
+                onChange={(e) => setLeftModel(e.target.value)}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select left model...</option>
+                {sampleModels.map(model => (
+                  <option key={model.id} value={model.id}>{model.name}</option>
+                ))}
+              </select>
+              {leftModel && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg text-sm">
+                  <div className="font-medium">{sampleModels.find(m => m.id === leftModel)?.name}</div>
+                  <div className="text-gray-600">{sampleModels.find(m => m.id === leftModel)?.description}</div>
+                  <div className="text-gray-500">Modified: {sampleModels.find(m => m.id === leftModel)?.lastModified}</div>
+                </div>
+              )}
+            </div>
 
-      <div className="text-center mt-8">
+            {/* Right Model */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-red-600">Right Model (Target)</label>
+              <select
+                value={rightModel}
+                onChange={(e) => setRightModel(e.target.value)}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">Select right model...</option>
+                {sampleModels.map(model => (
+                  <option key={model.id} value={model.id}>{model.name}</option>
+                ))}
+              </select>
+              {rightModel && (
+                <div className="mt-2 p-3 bg-red-50 rounded-lg text-sm">
+                  <div className="font-medium">{sampleModels.find(m => m.id === rightModel)?.name}</div>
+                  <div className="text-gray-600">{sampleModels.find(m => m.id === rightModel)?.description}</div>
+                  <div className="text-gray-500">Modified: {sampleModels.find(m => m.id === rightModel)?.lastModified}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Comparison Options */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Comparison Options</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Comparison Type</label>
+              <select
+                value={comparisonType}
+                onChange={(e) => setComparisonType(e.target.value)}
+                className="w-full p-3 border rounded-lg"
+              >
+                <option value="structure">Structure Only</option>
+                <option value="data">Data Values</option>
+                <option value="both">Structure + Data</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="enableMerge"
+                checked={enableMergeModel}
+                onChange={(e) => setEnableMergeModel(e.target.checked)}
+                className="w-4 h-4 text-green-600"
+              />
+              <label htmlFor="enableMerge" className="text-sm font-medium text-green-600">
+                Enable Merge Model Generation
+              </label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Button */}
+      <div className="flex justify-center">
         <Button
-          onClick={() => setStep(2)}
-          disabled={!leftModel || !rightModel || leftModel === rightModel}
+          onClick={handleStartComparison}
+          disabled={!leftModel || !rightModel || leftModel === rightModel || isComparing}
           size="lg"
+          className="px-8"
         >
-          <GitCompare className="mr-2 h-5 w-5" />
-          Compare Models
+          {isComparing ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Comparing Models...
+            </>
+          ) : (
+            <>
+              <GitCompare className="mr-2 h-5 w-5" />
+              Start Comparison
+            </>
+          )}
         </Button>
       </div>
     </div>
   )
 
-  const renderStep2 = () => (
-    <div className="max-w-4xl mx-auto text-center">
-      <h2 className="text-2xl font-bold mb-8">Running Comparison</h2>
-
-      <div className="grid md:grid-cols-2 gap-8 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-blue-600">
-              {sampleModels.find(m => m.id === leftModel)?.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-gray-600">
-              Version: {sampleModels.find(m => m.id === leftModel)?.version}
+  const renderComparisonGrid = () => (
+    <div className="flex-1 flex flex-col">
+      {/* Filters and Search */}
+      <div className="bg-white border-b p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="border rounded-md px-3 py-1 text-sm"
+              >
+                <option value="all">All Objects</option>
+                <option value="different">Conflicts Only</option>
+                <option value="new">New Objects</option>
+                <option value="same">Identical Objects</option>
+              </select>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600">
-              {sampleModels.find(m => m.id === rightModel)?.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-gray-600">
-              Version: {sampleModels.find(m => m.id === rightModel)?.version}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search objects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-1 border rounded-md text-sm w-64"
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">
+              {filteredResults.length} of {comparisonResults.length} objects
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowExportDrawer(true)}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {isComparing ? (
-        <div>
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Analyzing model differences...</p>
-        </div>
-      ) : (
-        <div>
-          <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">Comparison completed successfully!</p>
-          <Button onClick={() => setStep(3)} size="lg">
-            View Results
-          </Button>
-        </div>
-      )}
+      {/* Three-Column Comparison Grid */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full grid grid-cols-3 divide-x">
+          {/* Left Model Column */}
+          <div className="overflow-auto">
+            <div className="bg-blue-50 p-3 border-b">
+              <div className="text-sm font-medium text-blue-900">
+                {sampleModels.find(m => m.id === leftModel)?.name}
+              </div>
+              <div className="text-xs text-blue-700">Left Model (Source)</div>
+            </div>
+            <div className="divide-y">
+              {filteredResults.map((result, index) => (
+                <div
+                  key={index}
+                  className={`p-3 cursor-pointer hover:bg-gray-50 ${
+                    selectedConflict === index ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                  }`}
+                  onClick={() => setSelectedConflict(index)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-sm">{result.name}</div>
+                      <div className="text-xs text-gray-500">{result.type}</div>
+                    </div>
+                    {result.leftModel.exists ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                  </div>
+                  {result.leftModel.exists && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      {Object.keys(result.leftModel.properties).length} properties
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <Button
-        variant="outline"
-        onClick={handleStartComparison}
-        disabled={isComparing}
-        className="mt-4"
-      >
-        {isComparing ? 'Comparing...' : 'Start Comparison'}
-      </Button>
+          {/* Merge Model Column (conditional) */}
+          {enableMergeModel && (
+            <div className="overflow-auto">
+              <div className="bg-green-50 p-3 border-b">
+                <div className="text-sm font-medium text-green-900">Merge Model</div>
+                <div className="text-xs text-green-700">Generated Result</div>
+              </div>
+              <div className="divide-y">
+                {filteredResults.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 cursor-pointer hover:bg-gray-50 ${
+                      selectedConflict === index ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                    }`}
+                    onClick={() => setSelectedConflict(index)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-sm">{result.name}</div>
+                        <div className="text-xs text-gray-500">{result.type}</div>
+                      </div>
+                      {mergeModelData[result.name] ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <div className="h-4 w-4 border-2 border-dashed border-gray-300 rounded" />
+                      )}
+                    </div>
+                    {result.status !== 'same' && (
+                      <div className="mt-2 flex space-x-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs px-2 py-1 h-6"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleConflictResolution(index, 'take-left')
+                          }}
+                        >
+                          ← Take Left
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs px-2 py-1 h-6"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleConflictResolution(index, 'take-right')
+                          }}
+                        >
+                          Take Right →
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs px-2 py-1 h-6"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleConflictResolution(index, 'add-to-merge')
+                          }}
+                        >
+                          + Merge
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Right Model Column */}
+          <div className="overflow-auto">
+            <div className="bg-red-50 p-3 border-b">
+              <div className="text-sm font-medium text-red-900">
+                {sampleModels.find(m => m.id === rightModel)?.name}
+              </div>
+              <div className="text-xs text-red-700">Right Model (Target)</div>
+            </div>
+            <div className="divide-y">
+              {filteredResults.map((result, index) => (
+                <div
+                  key={index}
+                  className={`p-3 cursor-pointer hover:bg-gray-50 ${
+                    selectedConflict === index ? 'bg-red-50 border-r-4 border-r-red-500' : ''
+                  }`}
+                  onClick={() => setSelectedConflict(index)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-sm">{result.name}</div>
+                      <div className="text-xs text-gray-500">{result.type}</div>
+                    </div>
+                    {result.rightModel.exists ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                  </div>
+                  {result.rightModel.exists && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      {Object.keys(result.rightModel.properties).length} properties
+                    </div>
+                  )}
+                  {result.status !== 'same' && (
+                    <div className="mt-2">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        result.status === 'different' ? 'bg-yellow-100 text-yellow-800' :
+                        result.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {result.status === 'different' ? 'Modified' :
+                         result.status === 'new' ? 'New' : 'Identical'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 
-  const renderStep3 = () => (
-    <div className="h-full flex">
-      {/* Results List */}
-      <div className="w-1/2 border-r">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">Comparison Results</h3>
-          <div className="text-sm text-gray-600 mt-1">
-            Found {sampleResults.length} objects to review
-          </div>
-        </div>
-        <div className="overflow-auto">
-          {sampleResults.map((result, index) => {
-            const Icon = result.icon
-            return (
-              <div
-                key={index}
-                className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${
-                  selectedResult === index ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                }`}
-                onClick={() => setSelectedResult(index)}
-              >
-                <div className="flex items-center">
-                  <Icon className={`h-4 w-4 mr-2 ${result.color}`} />
-                  <div>
-                    <div className="font-medium text-sm">{result.name}</div>
-                    <div className="text-xs text-gray-500">{result.type}</div>
-                  </div>
-                  <div className="ml-auto">
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      result.status === 'same' ? 'bg-green-100 text-green-800' :
-                      result.status === 'different' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {result.status === 'same' ? 'Identical' :
-                       result.status === 'different' ? 'Modified' : 'New'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Details Panel */}
-      <div className="w-1/2 p-4">
-        {selectedResult !== null ? (
+  const renderPropertyPane = () => (
+    <div className="h-64 bg-white border-t overflow-auto">
+      <div className="p-4">
+        {selectedConflict !== null ? (
           <div>
-            <h3 className="font-semibold mb-4">
-              {sampleResults[selectedResult].name} Details
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Status:</label>
-                <div className={`mt-1 ${sampleResults[selectedResult].color}`}>
-                  {sampleResults[selectedResult].status === 'same' ? 'Identical in both models' :
-                   sampleResults[selectedResult].status === 'different' ? 'Differences found' :
-                   'Only exists in target model'}
-                </div>
-              </div>
-
-              {sampleResults[selectedResult].status === 'different' && (
-                <div>
-                  <label className="text-sm font-medium">Changes:</label>
-                  <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
-                    <li>Structure modified</li>
-                    <li>New attributes added</li>
-                  </ul>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full">
-                  Accept Target Version
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">{filteredResults[selectedConflict].name} - Detailed Properties</h3>
+              <div className="flex space-x-2">
+                <Button size="sm" variant="outline">
+                  <Eye className="h-4 w-4 mr-1" />
+                  Preview
                 </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  Keep Source Version
-                </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  Merge Changes
+                <Button size="sm" variant="outline">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              {/* Left Model Properties */}
+              <div>
+                <h4 className="text-sm font-medium text-blue-600 mb-2">Left Model Properties</h4>
+                {filteredResults[selectedConflict].leftModel.exists ? (
+                  <div className="space-y-2">
+                    {Object.entries(filteredResults[selectedConflict].leftModel.properties).map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm">
+                        <span className="font-medium">{key}:</span>
+                        <span className="text-gray-600">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">Object does not exist in left model</div>
+                )}
+              </div>
+
+              {/* Right Model Properties */}
+              <div>
+                <h4 className="text-sm font-medium text-red-600 mb-2">Right Model Properties</h4>
+                {filteredResults[selectedConflict].rightModel.exists ? (
+                  <div className="space-y-2">
+                    {Object.entries(filteredResults[selectedConflict].rightModel.properties).map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm">
+                        <span className="font-medium">{key}:</span>
+                        <span className="text-gray-600">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">Object does not exist in right model</div>
+                )}
+              </div>
+            </div>
+
+            {/* Conflicts Summary */}
+            {filteredResults[selectedConflict].conflicts.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-yellow-600 mb-2">Detected Conflicts</h4>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {filteredResults[selectedConflict].conflicts.map((conflict, index) => (
+                    <li key={index} className="flex items-center">
+                      <AlertTriangle className="h-3 w-3 text-yellow-500 mr-2" />
+                      {conflict}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="text-gray-500 text-center">
-            Select an object from the results to view details
+          <div className="text-center text-gray-500 mt-8">
+            Select an object from the comparison grid to view detailed properties
           </div>
         )}
       </div>
     </div>
   )
 
-  return (
-    <div className="h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <h1 className="text-xl font-semibold">Complete Compare</h1>
+  const renderExportDrawer = () => {
+    if (!showExportDrawer) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+        <div className="w-96 bg-white h-full overflow-auto">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Export & Reports</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowExportDrawer(false)}>
+                ✕
+              </Button>
+            </div>
           </div>
 
-          {/* Step Indicator */}
-          <div className="flex items-center space-x-2">
-            {[1, 2, 3].map((stepNum) => (
-              <div
-                key={stepNum}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                  step >= stepNum ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}
-              >
-                {stepNum}
+          <div className="p-4 space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Export Options</h4>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Comparison Report (PDF)
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" />
+                  Differences Summary (CSV)
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Database className="h-4 w-4 mr-2" />
+                  Merge Model (SQL)
+                </Button>
               </div>
-            ))}
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Report Templates</h4>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start">
+                  Executive Summary
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  Technical Details
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  Migration Guide
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Share & Collaborate</h4>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start">
+                  Generate Share Link
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  Email Report
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
-
-      {/* Content */}
-      <div className="flex-1 p-6">
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
       </div>
+    )
+  }
+
+  return (
+    <div className="h-screen bg-gray-50 flex">
+      {/* Left Navigation */}
+      <nav className="w-64 bg-white border-r border-gray-200">
+        <div className="p-4">
+          <div className="flex items-center space-x-3 mb-8">
+            <Database className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Data Modeling Studio</h1>
+              <p className="text-xs text-gray-500">Professional Edition</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <Button
+                  key={item.id}
+                  variant={item.active ? "default" : "ghost"}
+                  className="w-full justify-start px-3"
+                  onClick={() => item.id === 'dashboard' && onBack()}
+                >
+                  <Icon className="h-5 w-5 mr-3" />
+                  <span>{item.label}</span>
+                </Button>
+              )
+            })}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-semibold">Complete Compare</h1>
+              <div className="text-sm text-gray-500">
+                Professional model comparison with inline conflict resolution
+              </div>
+            </div>
+
+            {hasCompared && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span>Comparison Complete</span>
+                <span>•</span>
+                <span>{filteredResults.filter(r => r.status === 'different').length} conflicts found</span>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!hasCompared ? (
+            <div className="flex-1 p-6 overflow-auto">
+              {renderConfigurationForm()}
+            </div>
+          ) : (
+            <>
+              {renderComparisonGrid()}
+              {renderPropertyPane()}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Export Drawer */}
+      {renderExportDrawer()}
     </div>
   )
 }
