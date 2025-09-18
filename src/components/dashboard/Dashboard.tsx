@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import DiagramView from '@/components/diagram/DiagramView'
 import CompareView from '@/components/compare/CompareView'
+import ReverseEngineeringView from '@/components/reverse-engineering/ReverseEngineeringView'
 
 type ViewType = 'dashboard' | 'models' | 'reverse-engineering' | 'compare' | 'users' | 'settings' | 'diagram'
 
@@ -92,12 +93,20 @@ export default function Dashboard() {
     setCurrentView('compare')
   }
 
+  const handleReverseEngineering = () => {
+    setCurrentView('reverse-engineering')
+  }
+
   if (currentView === 'diagram') {
     return <DiagramView onBack={() => setCurrentView('dashboard')} />
   }
 
   if (currentView === 'compare') {
     return <CompareView onBack={() => setCurrentView('dashboard')} />
+  }
+
+  if (currentView === 'reverse-engineering') {
+    return <ReverseEngineeringView onBack={() => setCurrentView('dashboard')} />
   }
 
   return (
@@ -218,7 +227,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={handleReverseEngineering}>
                   <CardContent className="p-6 text-center">
                     <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <RefreshCw className="h-6 w-6 text-purple-600" />
