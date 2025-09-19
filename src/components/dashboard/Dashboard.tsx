@@ -60,7 +60,7 @@ export default function Dashboard() {
   // Navigation items
   const navItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', active: currentView === 'dashboard' },
-    { id: 'models', icon: Database, label: 'Models', active: currentView === 'models' },
+    { id: 'models', icon: Database, label: 'Model Explorer', active: currentView === 'models' },
     { id: 'reverse-engineering', icon: RefreshCw, label: 'Reverse Engineering', active: currentView === 'reverse-engineering' },
     { id: 'compare', icon: GitCompare, label: 'Complete Compare', active: currentView === 'compare' },
     { id: 'users', icon: Users, label: 'Users', active: currentView === 'users' },
@@ -77,7 +77,11 @@ export default function Dashboard() {
   }
 
   const handleNavigation = (viewId: string) => {
-    setCurrentView(viewId as ViewType)
+    if (viewId === 'models') {
+      setCurrentView('diagram')
+    } else {
+      setCurrentView(viewId as ViewType)
+    }
   }
 
   const handleNewModel = () => {
