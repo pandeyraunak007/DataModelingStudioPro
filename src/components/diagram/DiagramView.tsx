@@ -798,16 +798,16 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
 
           <div className="flex-1 overflow-y-auto">
             <div className="p-2">
-              {/* ERwin-Style Model Root Node */}
+              {/* ERwin-Style Model Root Node - Updated Structure */}
               <div className="mb-1">
                 <div
                   className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded cursor-pointer"
                   onClick={() => toggleSection('model')}
                 >
                   <div className="flex items-center space-x-2">
-                    <ChevronRight className={`h-4 w-4 text-blue-600 transition-transform ${expandedSections.includes('model') ? 'rotate-90' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 text-blue-600 transition-transform ${expandedSections.includes('model') ? 'rotate-0' : '-rotate-90'}`} />
                     <Database className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-semibold text-blue-800">{currentModel?.name || 'Model'}</span>
+                    <span className="text-sm font-semibold text-blue-800">Customer_Order_Model</span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
                     <MoreVertical className="h-3 w-3 text-blue-600" />
@@ -824,8 +824,8 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('diagrams')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('diagrams') ? 'rotate-90' : ''}`} />
-                          <Layers className="h-3 w-3 text-orange-500" />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('diagrams') ? 'rotate-0' : '-rotate-90'}`} />
+                          <FileText className="h-3 w-3 text-orange-500" />
                           <span className="text-xs font-medium text-gray-700">Diagrams</span>
                           <span className="text-xs text-gray-500">({currentModel?.diagrams.length || 0})</span>
                         </div>
@@ -848,60 +848,50 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                       </div>
                       {expandedSections.includes('diagrams') && currentModel && (
                         <div className="ml-5 mt-1">
-                          {currentModel.diagrams.map(diagram => (
-                            <div
-                              key={diagram.id}
-                              className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
-                                currentModel.currentDiagramId === diagram.id ? 'bg-blue-50 border border-blue-200' : ''
-                              }`}
-                              onClick={() => handleDiagramChange(diagram.id)}
-                            >
-                              <div className="flex items-center space-x-1">
-                                <FileText className="h-3 w-3 text-orange-400" />
-                                <span className="text-xs text-gray-700">{diagram.name}</span>
-                                <span className="text-xs text-gray-400">({diagram.entities.length})</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  console.log('Diagram context menu:', diagram.name)
-                                }}
-                              >
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
+                          <div
+                            className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
+                              currentModel.currentDiagramId === 'main' ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => handleDiagramChange('main')}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <Square className="h-3 w-3 text-orange-400" />
+                              <span className="text-xs text-gray-700">Main Diagram</span>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Subject Areas Section */}
-                    <div>
-                      <div
-                        className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group"
-                        onClick={() => toggleSection('subjectAreas')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('subjectAreas') ? 'rotate-90' : ''}`} />
-                          <Package className="h-3 w-3 text-teal-500" />
-                          <span className="text-xs font-medium text-gray-700">Subject Areas</span>
-                          <span className="text-xs text-gray-500">(0)</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100">
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100">
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      {expandedSections.includes('subjectAreas') && (
-                        <div className="ml-5 mt-1">
-                          <div className="text-xs text-gray-500 italic p-2">No subject areas defined</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                console.log('Diagram context menu: Main Diagram')
+                              }}
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div
+                            className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
+                              currentModel.currentDiagramId === 'user' ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => handleDiagramChange('user')}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <Square className="h-3 w-3 text-orange-400" />
+                              <span className="text-xs text-gray-700">User Management</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                console.log('Diagram context menu: User Management')
+                              }}
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -913,7 +903,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('entities')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('entities') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('entities') ? 'rotate-0' : '-rotate-90'}`} />
                           <Table className="h-3 w-3 text-blue-500" />
                           <span className="text-xs font-medium text-gray-700">Entities</span>
                           <span className="text-xs text-gray-500">({currentDiagram?.entities.length || 0})</span>
@@ -976,53 +966,66 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                       </div>
                       {expandedSections.includes('entities') && currentDiagram && (
                         <div className="ml-5 mt-1">
-                          {currentDiagram.entities.map(entity => (
-                            <div
-                              key={entity.id}
-                              className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
-                                selectedEntity?.id === entity.id ? 'bg-blue-50 border border-blue-200' : ''
-                              }`}
-                              onClick={() => {
-                                console.log('Entity clicked in Model Explorer:', entity.name)
-                                setSelectedEntity(entity)
+                          <div
+                            className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
+                              selectedEntity?.name === 'Customer' ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => {
+                              const customerEntity = currentDiagram.entities.find(e => e.name === 'Customer')
+                              if (customerEntity) {
+                                setSelectedEntity(customerEntity)
                                 setSelectedAttribute(null)
                                 setSelectedRelationship(null)
                                 setSelectedDiagram(null)
-                              }}
-                              draggable
-                              onDragStart={(e) => handleEntityDragStart(e, entity.id)}
-                            >
-                              <div className="flex items-center space-x-1">
-                                <Square className="h-3 w-3 text-blue-400" style={{ color: entity.color }} />
-                                <span className="text-xs text-gray-700">{entity.name}</span>
-                                <span className="text-xs text-gray-400">({entity.attributes.length})</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    console.log('Add attribute to:', entity.name)
-                                  }}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    console.log('Entity context menu:', entity.name)
-                                  }}
-                                >
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              }
+                            }}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <Square className="h-3 w-3 text-blue-500" />
+                              <span className="text-xs text-gray-700">Customer</span>
                             </div>
-                          ))}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                console.log('Entity context menu: Customer')
+                              }}
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div
+                            className={`flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group ${
+                              selectedEntity?.name === 'Order' ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => {
+                              const orderEntity = currentDiagram.entities.find(e => e.name === 'Order')
+                              if (orderEntity) {
+                                setSelectedEntity(orderEntity)
+                                setSelectedAttribute(null)
+                                setSelectedRelationship(null)
+                                setSelectedDiagram(null)
+                              }
+                            }}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <Square className="h-3 w-3 text-green-500" />
+                              <span className="text-xs text-gray-700">Order</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                console.log('Entity context menu: Order')
+                              }}
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1034,7 +1037,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('relationships')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('relationships') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('relationships') ? 'rotate-0' : '-rotate-90'}`} />
                           <Link2 className="h-3 w-3 text-green-500" />
                           <span className="text-xs font-medium text-gray-700">Relationships</span>
                           <span className="text-xs text-gray-500">({currentDiagram?.relationships.length || 0})</span>
@@ -1058,35 +1061,34 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                       </div>
                       {expandedSections.includes('relationships') && currentDiagram && (
                         <div className="ml-5 mt-1">
-                          {currentDiagram.relationships.map(rel => (
-                            <div
-                              key={rel.id}
-                              className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group"
-                              onClick={() => {
-                                setSelectedRelationship(rel)
+                          <div
+                            className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group"
+                            onClick={() => {
+                              const customerOrderRel = currentDiagram.relationships.find(r => r.from === 'customer' && r.to === 'order')
+                              if (customerOrderRel) {
+                                setSelectedRelationship(customerOrderRel)
                                 setSelectedEntity(null)
                                 setSelectedAttribute(null)
                                 setSelectedDiagram(null)
+                              }
+                            }}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <GitBranch className="h-3 w-3 text-green-400" />
+                              <span className="text-xs text-gray-700">Customer → Order</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                console.log('Relationship context menu: Customer → Order')
                               }}
                             >
-                              <div className="flex items-center space-x-1">
-                                <GitBranch className="h-3 w-3 text-green-400" />
-                                <span className="text-xs text-gray-700">{rel.from} → {rel.to}</span>
-                                <span className="text-xs text-gray-500">({rel.cardinality})</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  console.log('Relationship context menu:', rel.from, '→', rel.to)
-                                }}
-                              >
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1098,7 +1100,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('keys')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('keys') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('keys') ? 'rotate-0' : '-rotate-90'}`} />
                           <KeyRound className="h-3 w-3 text-yellow-500" />
                           <span className="text-xs font-medium text-gray-700">Keys</span>
                           <span className="text-xs text-gray-500">(3)</span>
@@ -1141,23 +1143,6 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                           </div>
                           <div className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group">
                             <div className="flex items-center space-x-1">
-                              <Key className="h-3 w-3 text-yellow-400" />
-                              <span className="text-xs text-gray-700">(PK) OrderID</span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                console.log('Key context menu: OrderID')
-                              }}
-                            >
-                              <MoreVertical className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer group">
-                            <div className="flex items-center space-x-1">
                               <Key className="h-3 w-3 text-orange-400" />
                               <span className="text-xs text-gray-700">(FK) Order.CustomerID</span>
                             </div>
@@ -1184,7 +1169,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('views')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('views') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('views') ? 'rotate-0' : '-rotate-90'}`} />
                           <Eye className="h-3 w-3 text-purple-500" />
                           <span className="text-xs font-medium text-gray-700">Views</span>
                           <span className="text-xs text-gray-500">(0)</span>
@@ -1215,7 +1200,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('domains')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('domains') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('domains') ? 'rotate-0' : '-rotate-90'}`} />
                           <BookOpen className="h-3 w-3 text-indigo-500" />
                           <span className="text-xs font-medium text-gray-700">Domains</span>
                           <span className="text-xs text-gray-500">(0)</span>
@@ -1246,7 +1231,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
                         onClick={() => toggleSection('businessRules')}
                       >
                         <div className="flex items-center space-x-1">
-                          <ChevronRight className={`h-3 w-3 text-gray-400 transition-transform ${expandedSections.includes('businessRules') ? 'rotate-90' : ''}`} />
+                          <ChevronDown className={`h-3 w-3 text-gray-500 transition-transform ${expandedSections.includes('businessRules') ? 'rotate-0' : '-rotate-90'}`} />
                           <Shield className="h-3 w-3 text-red-500" />
                           <span className="text-xs font-medium text-gray-700">Business Rules</span>
                           <span className="text-xs text-gray-500">(0)</span>
