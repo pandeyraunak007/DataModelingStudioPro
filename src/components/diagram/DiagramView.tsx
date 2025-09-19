@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
@@ -42,7 +42,7 @@ import {
   Circle,
   Diamond,
   Hexagon,
-  Toggle,
+  ToggleLeft,
   Trash,
   Copy,
   Edit3,
@@ -64,7 +64,26 @@ import {
   Table,
   Users,
   Layers,
-  Check
+  Check,
+  Clock,
+  Type,
+  AlertCircle,
+  Scissors,
+  AlertTriangle,
+  ArrowRight,
+  BarChart,
+  CheckCircle,
+  GitCompare,
+  Info,
+  Keyboard,
+  Maximize,
+  MessageCircle,
+  MessageSquare,
+  PlayCircle,
+  Replace,
+  RotateCcw,
+  Shuffle,
+  Home
 } from 'lucide-react'
 
 interface DiagramViewProps {
@@ -113,6 +132,11 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
   const [activeTab, setActiveTab] = useState<string>('file')
   const [expandedSections, setExpandedSections] = useState<string[]>(['model', 'diagrams', 'entities', 'relationships'])
   const [showDataTypes, setShowDataTypes] = useState(true)
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean
+    entityId: string | null
+    offset: { x: number; y: number }
+  }>({ isDragging: false, entityId: null, offset: { x: 0, y: 0 } })
   const [showKeyIcons, setShowKeyIcons] = useState(true)
   const [showViewDropdown, setShowViewDropdown] = useState(false)
   const [globalSearch, setGlobalSearch] = useState('')
@@ -125,6 +149,13 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
   const [propertiesPaneSections, setPropertiesPaneSections] = useState<string[]>(['general'])
   const [propertiesPaneWidth, setPropertiesPaneWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean;
+    x: number;
+    y: number;
+    type: 'entity' | 'attribute' | null;
+    target: any;
+  }>({ show: false, x: 0, y: 0, type: null, target: null })
   const canvasRef = useRef<HTMLDivElement>(null)
 
   // Multi-model state
@@ -145,9 +176,11 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
               y: 100,
               color: '#3B82F6',
               attributes: [
-                { name: 'CustomerID', type: 'int', constraints: ['PK', 'NOT NULL'] },
-                { name: 'FirstName', type: 'varchar(50)', constraints: ['NOT NULL'] },
-                { name: 'Email', type: 'varchar(100)', constraints: ['UNIQUE'] }
+                { name: 'CustomerID', type: 'bigint', constraints: ['PK'], nullable: false, domain: 'ID' },
+                { name: 'FirstName', type: 'varchar(50)', constraints: [], nullable: false, domain: 'PersonName' },
+                { name: 'LastName', type: 'varchar(50)', constraints: [], nullable: false, domain: 'PersonName' },
+                { name: 'Email', type: 'varchar(100)', constraints: ['UNIQUE'], nullable: true, domain: 'EmailAddress' },
+                { name: 'DateOfBirth', type: 'date', constraints: [], nullable: true, domain: 'Date' }
               ]
             },
             {
@@ -157,9 +190,11 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
               y: 100,
               color: '#10B981',
               attributes: [
-                { name: 'OrderID', type: 'int', constraints: ['PK', 'NOT NULL'] },
-                { name: 'CustomerID', type: 'int', constraints: ['FK', 'NOT NULL'] },
-                { name: 'OrderDate', type: 'datetime', constraints: ['NOT NULL'] }
+                { name: 'OrderID', type: 'bigint', constraints: ['PK'], nullable: false, domain: 'ID' },
+                { name: 'CustomerID', type: 'bigint', constraints: ['FK'], nullable: false, domain: 'ID' },
+                { name: 'OrderDate', type: 'datetime', constraints: [], nullable: false, domain: 'Date' },
+                { name: 'TotalAmount', type: 'decimal(10,2)', constraints: [], nullable: true, domain: 'Money' },
+                { name: 'Status', type: 'varchar(20)', constraints: [], nullable: false, domain: 'Status' }
               ]
             }
           ],
@@ -176,66 +211,172 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
   const currentModel = models.find(m => m.id === currentModelId)
   const currentDiagram = currentModel?.diagrams.find(d => d.id === currentModel.currentDiagramId)
 
-  // Toolbar tab configurations
+  // Enhanced Ribbon-Style Toolbar Configuration
   const toolbarTabs = {
     file: {
       label: 'File',
-      items: [
-        { icon: FileText, label: 'New', action: () => {} },
-        { icon: FolderOpen, label: 'Open', action: () => {} },
-        { icon: Save, label: 'Save', action: () => {} },
-        { icon: Save, label: 'Save As', action: () => {} },
-        { icon: Upload, label: 'Import', action: () => {} },
-        { icon: Download, label: 'Export', action: () => {} }
+      icon: FileText,
+      groups: [
+        {
+          name: 'Model',
+          items: [
+            { icon: FileText, label: 'New Model', action: () => console.log('New Model'), tooltip: 'Create a new data model' },
+            { icon: FolderOpen, label: 'Open Model', action: () => console.log('Open Model'), tooltip: 'Open existing model' },
+            { icon: Save, label: 'Save', action: () => console.log('Save'), tooltip: 'Save current model' },
+            { icon: Save, label: 'Save As', action: () => console.log('Save As'), tooltip: 'Save model with new name' }
+          ]
+        },
+        {
+          name: 'Import',
+          items: [
+            { icon: Upload, label: 'Import File', action: () => handleFileImport(), tooltip: 'Import file (DDL, JSON, XML)' }
+          ]
+        },
       ]
     },
     home: {
       label: 'Home',
-      items: [
-        { icon: Clipboard, label: 'Paste', action: () => {} },
-        { icon: Copy, label: 'Copy', action: () => {} },
-        { icon: Undo, label: 'Undo', action: () => {} },
-        { icon: Redo, label: 'Redo', action: () => {} },
-        { icon: Search, label: 'Find', action: () => {} }
+      icon: Home,
+      groups: [
+        {
+          name: 'History',
+          items: [
+            { icon: Undo, label: 'Undo', action: () => console.log('Undo'), tooltip: 'Undo last action' },
+            { icon: Redo, label: 'Redo', action: () => console.log('Redo'), tooltip: 'Redo last undone action' }
+          ]
+        },
+        {
+          name: 'Clipboard',
+          items: [
+            { icon: Scissors, label: 'Cut', action: () => console.log('Cut'), tooltip: 'Cut selected items' },
+            { icon: Copy, label: 'Copy', action: () => console.log('Copy'), tooltip: 'Copy selected items' },
+            { icon: Clipboard, label: 'Paste', action: () => console.log('Paste'), tooltip: 'Paste from clipboard' },
+            { icon: Trash2, label: 'Delete', action: () => console.log('Delete'), tooltip: 'Delete selected items' }
+          ]
+        },
+        {
+          name: 'Find',
+          items: [
+            { icon: Search, label: 'Search', action: () => console.log('Search'), tooltip: 'Search model objects' },
+            { icon: Replace, label: 'Replace', action: () => console.log('Replace'), tooltip: 'Find and replace' },
+            { icon: RefreshCw, label: 'Refresh', action: () => console.log('Refresh'), tooltip: 'Refresh diagram' }
+          ]
+        }
       ]
     },
     diagram: {
       label: 'Diagram',
-      items: [
-        { icon: Plus, label: 'New', action: () => {} },
-        { icon: FolderOpen, label: 'Open', action: () => {} },
-        { icon: Save, label: 'Save As', action: () => {} },
-        { icon: Upload, label: 'Import', action: () => {} },
-        { icon: Download, label: 'Export', action: () => {} }
+      icon: Layout,
+      groups: [
+        {
+          name: 'Objects',
+          items: [
+            { icon: Plus, label: 'Entity', action: () => console.log('Add Entity'), tooltip: 'Add new entity to diagram' },
+            { icon: Link2, label: 'Relation', action: () => console.log('Add Relationship'), tooltip: 'Add relationship between entities', hasSubmenu: true },
+            { icon: Eye, label: 'View', action: () => console.log('Add View'), tooltip: 'Add database view' },
+            { icon: BookOpen, label: 'Domain', action: () => console.log('Add Domain'), tooltip: 'Add data domain' }
+          ]
+        },
+        {
+          name: 'Annotations',
+          items: [
+            { icon: MessageSquare, label: 'Note', action: () => console.log('Add Note'), tooltip: 'Add text annotation' },
+            { icon: Square, label: 'Shape', action: () => console.log('Add Shape'), tooltip: 'Add comment box' }
+          ]
+        },
+        {
+          name: 'Layout',
+          items: [
+            { icon: Shuffle, label: 'Auto', action: () => console.log('Auto Layout'), tooltip: 'Automatically arrange entities' },
+            { icon: Grid3x3, label: 'Align', action: () => console.log('Align'), tooltip: 'Align selected objects' }
+          ]
+        }
       ]
     },
     view: {
       label: 'View',
-      items: [
-        { icon: ZoomIn, label: 'Zoom In', action: () => {} },
-        { icon: ZoomOut, label: 'Zoom Out', action: () => {} },
-        { icon: Maximize2, label: 'Fit', action: () => {} },
-        { icon: Grid3x3, label: 'Grid', action: () => {} },
-        { icon: Layers, label: 'Layers', action: () => {} }
+      icon: Eye,
+      groups: [
+        {
+          name: 'Zoom',
+          items: [
+            { icon: ZoomIn, label: 'In', action: () => console.log('Zoom In'), tooltip: 'Zoom in on diagram' },
+            { icon: ZoomOut, label: 'Out', action: () => console.log('Zoom Out'), tooltip: 'Zoom out from diagram' },
+            { icon: RotateCcw, label: 'Reset', action: () => console.log('Reset Zoom'), tooltip: 'Reset zoom to 100%' },
+            { icon: Maximize2, label: 'Fit', action: () => console.log('Fit Screen'), tooltip: 'Fit diagram to screen' }
+          ]
+        },
+        {
+          name: 'Navigation',
+          items: [
+            { icon: Move, label: 'Pan', action: () => console.log('Pan'), tooltip: 'Pan around diagram' },
+            { icon: Maximize, label: 'Full', action: () => console.log('Full Screen'), tooltip: 'Enter full screen mode' }
+          ]
+        },
+        {
+          name: 'Display',
+          items: [
+            { icon: Type, label: 'Types', action: () => setShowDataTypes(!showDataTypes), tooltip: 'Show/hide data types', isToggle: true, isActive: showDataTypes },
+            { icon: AlertCircle, label: 'Nulls', action: () => console.log('Toggle Nullability'), tooltip: 'Show/hide null indicators', isToggle: true },
+            { icon: Key, label: 'Keys', action: () => setShowKeyIcons(!showKeyIcons), tooltip: 'Show/hide key icons', isToggle: true, isActive: showKeyIcons },
+            { icon: BookOpen, label: 'Domains', action: () => console.log('Toggle Domains'), tooltip: 'Show/hide domains', isToggle: true }
+          ]
+        }
       ]
     },
     tools: {
       label: 'Tools',
-      items: [
-        { icon: GitMerge, label: 'Compare', action: () => {} },
-        { icon: RefreshCw, label: 'Reverse Engineer', action: () => {} },
-        { icon: Code, label: 'Generate SQL', action: () => {} },
-        { icon: FileCode, label: 'Generate Code', action: () => {} },
-        { icon: Table, label: 'Reports', action: () => {} }
+      icon: Settings,
+      groups: [
+        {
+          name: 'Engineering',
+          items: [
+            { icon: RefreshCw, label: 'Reverse', action: () => console.log('Reverse Engineering'), tooltip: 'Generate model from database' },
+            { icon: ArrowRight, label: 'Forward', action: () => console.log('Forward Engineering'), tooltip: 'Generate database from model' },
+            { icon: GitCompare, label: 'Compare', action: () => console.log('Complete Compare'), tooltip: 'Compare models or databases' }
+          ]
+        },
+        {
+          name: 'Validation',
+          items: [
+            { icon: CheckCircle, label: 'Validate', action: () => console.log('Validate Model'), tooltip: 'Check model for errors' },
+            { icon: AlertTriangle, label: 'Check', action: () => console.log('Check Model'), tooltip: 'Validate model integrity' }
+          ]
+        },
+        {
+          name: 'Reports',
+          items: [
+            { icon: FileText, label: 'Report', action: () => console.log('Generate Report'), tooltip: 'Create model documentation' },
+            { icon: BarChart, label: 'Analytics', action: () => console.log('Analytics'), tooltip: 'Model analytics and metrics' }
+          ]
+        }
       ]
     },
     help: {
       label: 'Help',
-      items: [
-        { icon: HelpCircle, label: 'Documentation', action: () => {} },
-        { icon: Users, label: 'Community', action: () => {} },
-        { icon: Settings, label: 'Settings', action: () => {} },
-        { icon: Share2, label: 'Share', action: () => {} }
+      icon: HelpCircle,
+      groups: [
+        {
+          name: 'Documentation',
+          items: [
+            { icon: HelpCircle, label: 'Docs', action: () => console.log('Documentation'), tooltip: 'Open user documentation' },
+            { icon: PlayCircle, label: 'Tutorials', action: () => console.log('Tutorials'), tooltip: 'View video tutorials' },
+            { icon: Keyboard, label: 'Shortcuts', action: () => console.log('Shortcuts'), tooltip: 'Keyboard shortcuts reference' }
+          ]
+        },
+        {
+          name: 'Support',
+          items: [
+            { icon: MessageCircle, label: 'Support', action: () => console.log('Support'), tooltip: 'Contact technical support' },
+            { icon: Users, label: 'Community', action: () => console.log('Community'), tooltip: 'Join user community' }
+          ]
+        },
+        {
+          name: 'About',
+          items: [
+            { icon: Info, label: 'About', action: () => console.log('About'), tooltip: 'About this application' }
+          ]
+        }
       ]
     }
   }
@@ -286,6 +427,49 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
     e.preventDefault()
   }
 
+  // Entity mouse drag handlers
+  const handleEntityMouseDown = (e: React.MouseEvent, entity: Entity) => {
+    // Only handle left mouse button
+    if (e.button !== 0) return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    setDragState({
+      isDragging: true,
+      entityId: entity.id,
+      offset: {
+        x: e.clientX - rect.left - entity.x,
+        y: e.clientY - rect.top - entity.y
+      }
+    })
+
+    setSelectedEntity(entity)
+  }
+
+  const handleEntityMouseMove = (e: React.MouseEvent) => {
+    if (!dragState.isDragging || !dragState.entityId || !currentModel || !currentDiagram) return
+
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const newX = e.clientX - rect.left - dragState.offset.x
+    const newY = e.clientY - rect.top - dragState.offset.y
+
+    // Constrain to canvas bounds
+    const constrainedX = Math.max(0, Math.min(newX, 2000 - 200)) // 200 is entity width
+    const constrainedY = Math.max(0, Math.min(newY, 2000 - 100)) // approximate entity height
+
+    updateEntityPosition(dragState.entityId, constrainedX, constrainedY)
+  }
+
+  const handleEntityMouseUp = () => {
+    setDragState({ isDragging: false, entityId: null, offset: { x: 0, y: 0 } })
+  }
+
   const handleModelChange = (modelId: string) => {
     setCurrentModelId(modelId)
     setSelectedEntity(null)
@@ -329,6 +513,40 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
       }
       setModels(remainingModels)
     }
+  }
+
+  const handleFileImport = () => {
+    // Create a hidden file input element
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = '.ddl,.sql,.json,.xml'
+    fileInput.style.display = 'none'
+
+    fileInput.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const content = e.target?.result as string
+          console.log('File imported:', {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            content: content.substring(0, 100) + '...' // Log first 100 chars
+          })
+
+          // TODO: Implement actual file parsing logic based on file type
+          // For now, just show a success message
+          alert(`File "${file.name}" imported successfully!\nFile type: ${file.type}\nSize: ${file.size} bytes`)
+        }
+        reader.readAsText(file)
+      }
+    }
+
+    // Trigger file dialog
+    document.body.appendChild(fileInput)
+    fileInput.click()
+    document.body.removeChild(fileInput)
   }
 
   // Floating toolbar groups
@@ -616,17 +834,21 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
 
             {/* Main Tabs */}
             <nav className="flex items-center">
-              {Object.entries(toolbarTabs).map(([key, tab]) => (
-                <Button
-                  key={key}
-                  variant={activeTab === key ? 'default' : 'ghost'}
-                  size="sm"
-                  className="text-xs px-3 py-1 h-7 rounded-none"
-                  onClick={() => setActiveTab(key)}
-                >
-                  {tab.label}
-                </Button>
-              ))}
+              {Object.entries(toolbarTabs).map(([key, tab]) => {
+                const TabIcon = tab.icon
+                return (
+                  <Button
+                    key={key}
+                    variant={activeTab === key ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs px-3 py-1 h-7 rounded-none flex items-center space-x-1"
+                    onClick={() => setActiveTab(key)}
+                  >
+                    <TabIcon className="h-3 w-3" />
+                    <span>{tab.label}</span>
+                  </Button>
+                )
+              })}
             </nav>
           </div>
 
@@ -765,20 +987,53 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
           </div>
         </div>
 
-        {/* Layer 2: Contextual Actions */}
-        <div className="h-10 px-4 bg-gray-50 flex items-center space-x-2 border-t border-gray-100">
-          {toolbarTabs[activeTab as keyof typeof toolbarTabs].items.map((item, idx) => (
-            <Button
-              key={idx}
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7 px-2"
-              onClick={item.action}
-            >
-              <item.icon className="h-3 w-3 mr-1" />
-              {item.label}
-            </Button>
-          ))}
+        {/* Layer 2: Clean Toolbar Actions */}
+        <div className="h-20 px-4 bg-white border-t border-gray-200">
+          <div className="flex items-start h-full space-x-1 pt-2">
+            {toolbarTabs[activeTab as keyof typeof toolbarTabs].groups.map((group, groupIdx) => (
+              <React.Fragment key={groupIdx}>
+                {/* Group Items */}
+                <div className="flex items-center h-full">
+                  {group.items.map((item, itemIdx) => (
+                    <div key={itemIdx} className="relative group">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`flex flex-col items-center justify-center h-16 w-16 rounded hover:bg-gray-100 transition-all px-1 ${
+                          item.isToggle && item.isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                        }`}
+                        onClick={item.action}
+                      >
+                        <div className="flex items-center">
+                          <item.icon className="h-5 w-5" />
+                          {item.hasSubmenu && (
+                            <ChevronDown className="h-3 w-3 ml-0.5" />
+                          )}
+                        </div>
+                        <span className="text-xs mt-1 text-center leading-tight max-w-full break-words">
+                          {item.label}
+                        </span>
+                      </Button>
+
+                      {/* Tooltip on Hover */}
+                      {item.tooltip && (
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          <div className="bg-gray-800 text-white text-xs px-2 py-1.5 rounded shadow-lg whitespace-nowrap">
+                            {item.tooltip}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Group Separator */}
+                {groupIdx < toolbarTabs[activeTab as keyof typeof toolbarTabs].groups.length - 1 && (
+                  <div className="h-8 w-px bg-gray-300 mx-2" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1395,43 +1650,143 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
             className="flex-1 relative overflow-auto"
             onDrop={handleCanvasDrop}
             onDragOver={handleCanvasDragOver}
+            onMouseMove={handleEntityMouseMove}
+            onMouseUp={handleEntityMouseUp}
+            onClick={() => setContextMenu({ show: false, x: 0, y: 0, type: null, target: null })}
           >
             <div className="absolute inset-0" style={{ width: '2000px', height: '2000px' }}>
-              {/* Entity Cards */}
+              {/* ERwin-Style Entity Cards */}
               {currentDiagram?.entities.map(entity => (
                 <div
                   key={entity.id}
-                  className="absolute bg-white rounded-lg shadow-md overflow-hidden"
-                  style={{ left: entity.x, top: entity.y, width: '240px' }}
+                  className={`absolute bg-white border-2 border-black overflow-hidden transition-all duration-200 hover:shadow-md cursor-move select-none ${
+                    selectedEntity?.id === entity.id ? 'ring-2 ring-blue-400' : ''
+                  } ${
+                    dragState.isDragging && dragState.entityId === entity.id ? 'opacity-75 scale-105 shadow-2xl' : ''
+                  }`}
+                  style={{ left: entity.x, top: entity.y, width: '200px' }}
+                  onMouseDown={(e) => handleEntityMouseDown(e, entity)}
                   onClick={() => {
-                    console.log('Entity clicked on canvas:', entity.name)
-                    setSelectedEntity(entity)
-                    setSelectedAttribute(null)
-                    setSelectedRelationship(null)
-                    setSelectedDiagram(null)
+                    if (!dragState.isDragging) {
+                      console.log('Entity clicked on canvas:', entity.name)
+                      setSelectedEntity(entity)
+                      setSelectedAttribute(null)
+                      setSelectedRelationship(null)
+                      setSelectedDiagram(null)
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setContextMenu({
+                      show: true,
+                      x: e.clientX,
+                      y: e.clientY,
+                      type: 'entity',
+                      target: entity
+                    })
                   }}
                 >
-                  <div
-                    className="px-3 py-2 text-white font-medium text-sm"
-                    style={{ backgroundColor: entity.color }}
-                  >
-                    {entity.name}
+                  {/* Entity Header - Classic ERwin Style */}
+                  <div className="px-2 py-1 bg-white border-b-2 border-black text-center">
+                    <h3 className="font-bold text-sm text-black">
+                      {entity.name}
+                    </h3>
                   </div>
-                  <div className="p-2">
-                    {entity.attributes.map((attr, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-1 text-xs border-b last:border-0">
-                        <div className="flex items-center space-x-1">
-                          {showKeyIcons && attr.constraints.includes('PK') && (
-                            <KeyRound className="h-3 w-3 text-yellow-500" />
-                          )}
-                          {showKeyIcons && attr.constraints.includes('FK') && (
-                            <Link2 className="h-3 w-3 text-blue-500" />
-                          )}
-                          <span className="font-medium">{attr.name}</span>
+
+                  {/* Attributes Section - ERwin Layout */}
+                  <div className="bg-white text-xs">
+                    {/* Primary Key Attributes - Top Section */}
+                    {entity.attributes
+                      .filter(attr => attr.constraints.includes('PK'))
+                      .map((attr, idx) => (
+                      <div
+                        key={`pk-${idx}`}
+                        className="flex items-center justify-between px-2 py-0.5 border-b border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer group"
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setContextMenu({
+                            show: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            type: 'attribute',
+                            target: { entity, attribute: attr }
+                          })
+                        }}
+                      >
+                        <div className="flex items-center space-x-1 flex-1 min-w-0">
+                          <span className="font-bold text-black truncate">
+                            {attr.name}
+                          </span>
                         </div>
-                        {showDataTypes && (
-                          <span className="text-gray-500">{attr.type}</span>
-                        )}
+
+                        {/* Data Type and Constraints */}
+                        <div className="flex flex-col items-end text-right">
+                          <div className="flex items-center space-x-1">
+                            <span className="font-mono text-xs text-black">
+                              {attr.type}
+                            </span>
+                            <span className="font-bold text-black">PK</span>
+                          </div>
+                          {attr.domain && (
+                            <div className="text-xs text-gray-600 italic">
+                              {attr.domain}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Separator Line between PKs and Non-PKs */}
+                    {entity.attributes.filter(attr => attr.constraints.includes('PK')).length > 0 &&
+                     entity.attributes.filter(attr => !attr.constraints.includes('PK')).length > 0 && (
+                      <div className="border-t-2 border-black"></div>
+                    )}
+
+                    {/* Non-Primary Key Attributes - Bottom Section */}
+                    {entity.attributes
+                      .filter(attr => !attr.constraints.includes('PK'))
+                      .map((attr, idx) => (
+                      <div
+                        key={`attr-${idx}`}
+                        className="flex items-center justify-between px-2 py-0.5 border-b border-gray-300 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer group"
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setContextMenu({
+                            show: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            type: 'attribute',
+                            target: { entity, attribute: attr }
+                          })
+                        }}
+                      >
+                        <div className="flex items-center space-x-1 flex-1 min-w-0">
+                          <span className="text-black truncate">
+                            {attr.name}
+                          </span>
+                        </div>
+
+                        {/* Data Type and Constraints */}
+                        <div className="flex flex-col items-end text-right">
+                          <div className="flex items-center space-x-1">
+                            <span className="font-mono text-xs text-black">
+                              {attr.type}
+                            </span>
+                            {attr.constraints.includes('FK') && (
+                              <span className="font-bold text-black">FK</span>
+                            )}
+                            {!attr.nullable && !attr.constraints.includes('PK') && (
+                              <span className="text-red-600 font-bold text-xs">*</span>
+                            )}
+                          </div>
+                          {attr.domain && (
+                            <div className="text-xs text-gray-600 italic">
+                              {attr.domain}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2011,6 +2366,87 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu.show && (
+        <div
+          className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 min-w-48"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.type === 'entity' && (
+            <>
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">
+                Entity: {contextMenu.target?.name}
+              </div>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>Add Attribute</span>
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <KeyRound className="h-4 w-4" />
+                <span>Add Primary Key</span>
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <Link2 className="h-4 w-4" />
+                <span>Add Foreign Key</span>
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <BookOpen className="h-4 w-4" />
+                <span>Add Domain</span>
+              </button>
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                  <Edit2 className="h-4 w-4" />
+                  <span>Edit Entity</span>
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                  <Copy className="h-4 w-4" />
+                  <span>Duplicate Entity</span>
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2">
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Entity</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {contextMenu.type === 'attribute' && (
+            <>
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">
+                Attribute: {contextMenu.target?.attribute?.name}
+              </div>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <Edit2 className="h-4 w-4" />
+                <span>Edit Name/Type</span>
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <ToggleLeft className="h-4 w-4" />
+                <span>Toggle Null/Not Null</span>
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                <BookOpen className="h-4 w-4" />
+                <span>Assign Domain</span>
+              </button>
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                  <KeyRound className="h-4 w-4" />
+                  <span>Convert to PK</span>
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2">
+                  <Link2 className="h-4 w-4" />
+                  <span>Convert to FK</span>
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2">
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Attribute</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
