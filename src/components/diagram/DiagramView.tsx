@@ -90,6 +90,27 @@ interface DiagramViewProps {
   onBack?: () => void
 }
 
+interface ToolbarItem {
+  icon: React.ComponentType<any>
+  label: string
+  action: () => void
+  tooltip: string
+  hasSubmenu?: boolean
+  isToggle?: boolean
+  isActive?: boolean
+}
+
+interface ToolbarGroup {
+  name: string
+  items: ToolbarItem[]
+}
+
+interface ToolbarTab {
+  label: string
+  icon: React.ComponentType<any>
+  groups: ToolbarGroup[]
+}
+
 interface Entity {
   id: string
   name: string
@@ -100,6 +121,8 @@ interface Entity {
     name: string
     type: string
     constraints: string[]
+    nullable?: boolean
+    domain?: string
   }>
 }
 
@@ -212,7 +235,7 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
   const currentDiagram = currentModel?.diagrams.find(d => d.id === currentModel.currentDiagramId)
 
   // Enhanced Ribbon-Style Toolbar Configuration
-  const toolbarTabs = {
+  const toolbarTabs: Record<string, ToolbarTab> = {
     file: {
       label: 'File',
       icon: FileText,
@@ -464,6 +487,28 @@ export default function DiagramView({ onBack }: DiagramViewProps) {
     const constrainedY = Math.max(0, Math.min(newY, 2000 - 100)) // approximate entity height
 
     updateEntityPosition(dragState.entityId, constrainedX, constrainedY)
+  }
+
+  const updateEntityPosition = (entityId: string, x: number, y: number) => {
+    setModels(prev => prev.map(model => {
+      if (model.id === currentModelId) {
+        return {
+          ...model,
+          diagrams: model.diagrams.map(diagram => {
+            if (diagram.id === model.currentDiagramId) {
+              return {
+                ...diagram,
+                entities: diagram.entities.map(entity =>
+                  entity.id === entityId ? { ...entity, x, y } : entity
+                )
+              }
+            }
+            return diagram
+          })
+        }
+      }
+      return model
+    }))
   }
 
   const handleEntityMouseUp = () => {

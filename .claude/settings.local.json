@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/pande/OneDrive/Documents/Raunak/forGit/data-modeling-app/**)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(where node)",
+      "Bash(node:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run build:*)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" \"C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js\" run dev)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" node_modules.binnext.cmd dev)",
+      "Bash(dir node_modules.bin)",
+      "Bash(cmd /c:*)",
+      "Bash(git add:*)",
+      "Bash(del nul)",
+      "Bash(git push:*)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" --version)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" node_modules.nextdistbinnext dev)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" node_modules/.bin/next dev)",
+      "Bash(git restore:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(rd:*)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" \"C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js\" next dev)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" node_modulesnextdistbinnext dev)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" \"node_modules/next/dist/bin/next\" dev)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" \"node_modules/next/dist/bin/next\" dev -p 3002)",
+      "Bash(git pull:*)",
+      "Bash(\"C:\\Program Files\\nodejs\\node.exe\" node_modules/.bin/next build)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -168,7 +168,7 @@ export default function CompareView({ onBack }: CompareViewProps) {
     console.log(`Resolving conflict ${index} with action: ${action}`)
     // Update merge model data based on action
     if (action === 'add-to-merge') {
-      setMergeModelData(prev => ({
+      setMergeModelData((prev: any) => ({
         ...prev,
         [comparisonResults[index].name]: comparisonResults[index]
       }))
